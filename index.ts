@@ -13,7 +13,7 @@ const propertiesCsvFilePath = path.resolve(
 const propertiesFileContent = fs.readFileSync(propertiesCsvFilePath, {
   encoding: "utf-8",
 });
-export const properties: Property[] = parse(propertiesFileContent, {
+const properties: Property[] = parse(propertiesFileContent, {
   delimiter: ",",
   columns: true,
   cast: (value, context) => {
@@ -34,12 +34,14 @@ const tenantsCsvFilePath = path.resolve(
 const tenantsFileContent = fs.readFileSync(tenantsCsvFilePath, {
   encoding: "utf-8",
 });
-export const tenants: Tenant[] = parse(tenantsFileContent, {
+const tenants: Tenant[] = parse(tenantsFileContent, {
   delimiter: ",",
   columns: true,
 });
 
 export const getAverageRentForRegion = (region: Region): number => {
+  // Incrementing a counter in the reduce callback to avoid having to use a separate filter
+  // to get the number of properties in the region
   let numberOfPropertiesInRegion = 0;
   const totalRentInRegion = properties.reduce((total, property) => {
     if (property.region === region) {
@@ -49,7 +51,7 @@ export const getAverageRentForRegion = (region: Region): number => {
     return total;
   }, 0);
 
-  return Math.ceil(totalRentInRegion / numberOfPropertiesInRegion);
+  return Math.round(totalRentInRegion / numberOfPropertiesInRegion);
 };
 
 export const getMonthlyRentPerTenantForProperty = (
@@ -76,6 +78,7 @@ export const getMonthlyRentPerTenantForProperty = (
 };
 
 export const getPropertyIdsWithInvalidPostcodes = (): string[] => {
+  // Using a reduce here to avoid having to use both filter and map
   return properties.reduce((current: string[], property) => {
     if (!POSTCODE_REGEX.test(property.postcode)) {
       current.push(property.id);
@@ -98,7 +101,7 @@ export const getPropertyStatus = (propertyId: string): PropertyStatus => {
     return "PROPERTY_VACANT";
   }
 
-  if (new Date() >= property.tenancyEndDate) {
+  if (new Date() > property.tenancyEndDate) {
     return "PROPERTY_OVERDUE";
   }
 
@@ -111,26 +114,45 @@ export const getPropertyStatus = (propertyId: string): PropertyStatus => {
 
 // Edit below
 
-console.log("Average rent for England:", getAverageRentForRegion("ENGLAND"));
+console.log(
+  "Average rent for England:",
+  getAverageRentForRegion("ENGLAND"),
+  "\n"
+);
 console.log(
   "Average rent for N.Ireland:",
-  getAverageRentForRegion("N.IRELAND")
+  getAverageRentForRegion("N.IRELAND"),
+  "\n"
 );
-console.log("Average rent for Scotland:", getAverageRentForRegion("SCOTLAND"));
-console.log("Average rent for Wales:", getAverageRentForRegion("WALES"));
+console.log(
+  "Average rent for Scotland:",
+  getAverageRentForRegion("SCOTLAND"),
+  "\n"
+);
+console.log("Average rent for Wales:", getAverageRentForRegion("WALES"), "\n");
 
-console.log(
-  "Monthly rent per tenant in pence:",
-  getMonthlyRentPerTenantForProperty("p_1002")
-);
-console.log(
-  "Monthly rent per tenant in pounds:",
-  getMonthlyRentPerTenantForProperty("p_1002", "pound")
-);
+["p_1002"].forEach((id) => {
+  console.log(
+    `Monthly rent for property ${id} per tenant in pence:`,
+    getMonthlyRentPerTenantForProperty(id),
+    "\n"
+  );
+});
+
+["p_1002"].forEach((id) => {
+  console.log(
+    `Monthly rent for property ${id} per tenant in pounds:`,
+    getMonthlyRentPerTenantForProperty(id, "pound"),
+    "\n"
+  );
+});
 
 console.log(
   "Property ids with invalid postcodes: ",
-  getPropertyIdsWithInvalidPostcodes()
+  getPropertyIdsWithInvalidPostcodes(),
+  "\n"
 );
 
-console.log("Property status:", getPropertyStatus("p_1002"));
+["p_1002"].forEach((id) => {
+  console.log(`Status for property ${id}:`, getPropertyStatus(id), "\n");
+});
